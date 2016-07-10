@@ -1,0 +1,124 @@
+<!doctype html>
+<html>
+    <head>
+        <script src="jquery-3.0.0.min.js"></script>
+        <script>
+            $(function() {
+                var system = [];
+                var math_field = $('#math');
+                var holder = $('<div>');
+                var status_bar = $('#status');
+                var modes = {
+                    'insert': 'insert',
+                    'normal': 'normal',
+                };
+                var insert_types = {
+                    'unknown': {
+                        'name': 'unknown',
+                        'regex': null,
+                        'tag': null,
+                        'sever': true,
+                    },
+                    'latin': {
+                        'name': 'latin',
+                        'regex': /^[a-zA-Z]$/,
+                        'tag': '<mi>',
+                        'sever': false,
+                    },
+                    'numeral': {
+                        'name': 'numeral',
+                        'regex': /^[0-9]$/,
+                        'tag': '<mn>',
+                        'sever': false,
+                    },
+                    'operator': {
+                        'name': 'operator',
+                        'regex': /^[\+\-\=\(\)]$/,
+                        'tag': '<mo>',
+                        'sever': true,
+                    },
+                };
+                var insert_type_list = ['latin', 'numeral', 'operator'];
+                var mode = modes.normal;
+                var current_variable = '';
+                var current_insert_type = insert_types.latin;
+                function make_tag(value, type) {
+                    return $(type.tag).text(value);
+                }
+                function sever_current (type) {
+                    if (type.sever ||
+                        (current_variable !== '' &&
+                         current_insert_type.name !== type.name)) {
+                        if (current_variable !== '') {
+                            system.push(make_tag(current_variable,
+                                                 current_insert_type));
+                        }
+                        current_variable = '';
+                    }
+                    current_insert_type = type;
+                }
+                function render() {
+                    holder.html('');
+                    system.forEach(function(elem) {
+                        holder.append(elem);
+                    });
+                    if (current_variable !== '') {
+                        holder.append(make_tag(current_variable,
+                                               current_insert_type));
+                    }
+                    math_field.html(holder.html());
+                }
+                function responses (key) {
+                    if (mode == modes.normal) {
+                        switch(key) {
+                            case 'i':
+                                status_bar.text('---INSERT MODE---');
+                                mode = modes.insert;
+                                break;
+                        }
+                    } else if (mode == modes.insert) {
+                        if (key === 'Backspace') {
+                            if (current_variable.length > 0) {
+                                current_variable = current_variable.substring(
+                                        0, current_variable.length - 1);
+                                if (current_variable.length == 0) {
+                                    current_insert_type = insert_types.unknown;
+                                }
+                            } else {
+                                system.pop();
+                            }
+                        } else {
+                            var found_type = insert_type_list.some(function(type) {
+                                type = insert_types[type];
+                                if (type.regex.test(key)) {
+                                    sever_current(type);
+                                    current_variable += key;
+                                    return true;
+                                }
+                            });
+                            if (!found_type) {
+                                sever_current(insert_types.unknown);
+                            }
+                        }
+                        switch(key) {
+                            case 'Escape':
+                                status_bar.text('');
+                                mode = modes.normal;
+                                break;
+                        }
+                    }
+                    render();
+                }
+                $('body').keydown(function(e) {
+                    responses(e.key);
+                    // return false;
+                });
+            });
+        </script>
+    </head>
+    <body>
+        <math id="math" display="block" xmlns="http://www.w3.org/1998/Math/MathML">
+        </math>
+        <div id="status"></div>
+    </body>
+</html>
